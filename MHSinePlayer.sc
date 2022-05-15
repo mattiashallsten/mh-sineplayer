@@ -4,6 +4,7 @@ MHSinePlayerSynth {
 	var mods;
 	var amp = 0.2;
 	var <finetune = 0.0;
+	var additional_args;
 
 	*new {| ratio = 1, out = 0, index, parent |
 		^super.newCopyArgs(ratio, out, index, parent).init;
@@ -14,14 +15,17 @@ MHSinePlayerSynth {
 		// `MHSinePlayerSynth' compared to `MHSinePlayer'.
 		mods = 0.0!3;
 		is_playing = false;
+		additional_args = Dictionary.new();
 	}
 
 	play {| new_ratio, atk, rel |
 		if((new_ratio.asString != ratio.asString) || (is_playing == false), {
+			var arguments = Dictionary.new();
+
 			ratio = new_ratio;
 			if(is_playing, { this.stop() });
 
-			player = Synth(parent.synthdef, [
+			arguments = arguments ++ Dictionary.newFrom([
 				\freq, parent.root * ratio.asNum * this.convert_finetune(finetune),
 				\out, if(parent.split_out, {parent.out + index}, {parent.out}),
 				\amp, amp,
@@ -30,7 +34,9 @@ MHSinePlayerSynth {
 				\mod1, mods[0],
 				\mod2, mods[1],
 				\mod3, mods[2]
-			], parent.target);
+			]) ++ additional_args;
+				
+			player = Synth(parent.synthdef, arguments.getPairs, parent.target);
 			
 			is_playing = true;
 		});
@@ -99,6 +105,7 @@ MHSinePlayerSynth {
 	}
 
 	set_value {|key, val|
+		additional_args[key] = val;
 		if(is_playing, {
 			player.set(key, val)
 		})
