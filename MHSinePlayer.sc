@@ -25,7 +25,28 @@ MHSinePlayerSynth {
 			ratio = new_ratio;
 			if(is_playing, { this.stop() });
 
-			arguments = arguments ++ Dictionary.newFrom([
+			// TODO: Setting arguments via dictionary is not
+			// working properly. Maybe to slow?
+			// arguments = arguments ++ Dictionary.newFrom([
+			// 	\freq, parent.root * ratio.asNum * this.convert_finetune(finetune),
+			// 	\out, if(parent.split_out, {parent.out + index}, {parent.out}),
+			// 	\amp, amp,
+			// 	\atk, atk ? parent.atk,
+			// 	\rel, rel ? parent.rel,
+			// 	\mod1, mods[0],
+			// 	\mod2, mods[1],
+			// 	\mod3, mods[2]
+			// ]);
+			
+			// arguments = arguments ++ additional_args;
+			
+			// arguments = arguments.getPairs;
+
+			// if(parent.debug, {
+			// 	"In `MHSinePlayerSynth.play': playing sine with arguments: %".format(arguments).postln;
+			// });
+			
+			player = Synth(parent.synthdef, [
 				\freq, parent.root * ratio.asNum * this.convert_finetune(finetune),
 				\out, if(parent.split_out, {parent.out + index}, {parent.out}),
 				\amp, amp,
@@ -34,11 +55,21 @@ MHSinePlayerSynth {
 				\mod1, mods[0],
 				\mod2, mods[1],
 				\mod3, mods[2]
-			]) ++ additional_args;
-				
-			player = Synth(parent.synthdef, arguments.getPairs, parent.target);
+			] ++ additional_args.getPairs, parent.target);
+
+			if(parent.debug, {
+				"In `MHSinePlayerSynth.play': playing synth with additional arguments: %".format(additional_args).postln;
+			});
+
+			if(parent.debug, {
+				"In `MHSinePlayerSynth.play': created synth %".format(player).postln;
+			});
 			
 			is_playing = true;
+			// FIXME: Quickfix for bug where the frequency is not
+			// properly set using the dictionary.
+			
+			this.update_param();
 		});
 	}
 
@@ -56,6 +87,7 @@ MHSinePlayerSynth {
 		}, {
 			this.play(new_ratio);
 		});
+		this.update_param();
 	}
 
 	stop {
@@ -84,6 +116,7 @@ MHSinePlayerSynth {
 			};
 			player.set(\freq, parent.root * ratio.asNum * this.convert_finetune(finetune));
 			player.set(\amp, amp);
+			player.set(additional_args.getPairs);
 		})
 	}
 
@@ -106,7 +139,12 @@ MHSinePlayerSynth {
 
 	set_value {|key, val|
 		additional_args[key] = val;
+
 		if(is_playing, {
+			if(parent.debug, {
+				"In `MHSinePlayerSynth.set_value': setting key '%' to value %".format(key, val).postln;
+			});
+			
 			player.set(key, val)
 		})
 	}
@@ -251,8 +289,10 @@ MHSinePlayer {
 	}
 
 	init {
+		"======== MHSinePlayer ========".postln;
 		server = server ? Server.default;
 		synthdef = synthdef ? \mh_sine_player_sines;
+		"Using synthdef %".format(synthdef).postln;
 
 		forkIfNeeded {
 			this.load_synth_defs;
@@ -451,6 +491,10 @@ MHSinePlayer {
 	}
 
 	set_value {|synth_index = "all", key, val|
+		if(debug, {
+			"In `MHSinePlayer.set_value': setting sine index % key '%' to value %".format(synth_index, key, val).postln;
+		});
+
 		if(synth_index == "all", {
 			sines.do{|sine|
 				sine.set_value(key, val)
